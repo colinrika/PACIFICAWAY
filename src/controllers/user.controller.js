@@ -1,0 +1,4 @@
+const pool = require("../config/db");
+exports.me=async(req,res)=>{ try{ const q=await pool.query(`SELECT id,name,email,role,status,created_at,updated_at FROM users WHERE id=$1`,[req.user.id]); res.json({user:q.rows[0]}); }catch(e){ res.status(500).json({error:"Failed to fetch profile"});} };
+exports.list=async(_req,res)=>{ try{ const q=await pool.query(`SELECT id,name,email,role,status,created_at FROM users ORDER BY created_at DESC`); res.json({users:q.rows}); }catch(e){ res.status(500).json({error:"Failed to list users"});} };
+exports.getById=async(req,res)=>{ try{ const q=await pool.query(`SELECT id,name,email,role,status,created_at FROM users WHERE id=$1`,[req.params.id]); if(!q.rows[0]) return res.status(404).json({error:"Not found"}); res.json({user:q.rows[0]}); }catch(e){ res.status(500).json({error:"Failed to get user"});} };

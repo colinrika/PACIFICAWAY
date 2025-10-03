@@ -7,10 +7,8 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Root
 app.get("/", (req, res) => res.send("PACIFICAWAY API is running 🚀"));
 
-// Health check
 app.get("/health", async (req, res) => {
   try {
     const r = await pool.query("SELECT NOW() as now");
@@ -20,8 +18,11 @@ app.get("/health", async (req, res) => {
   }
 });
 
-// Auth routes
 app.use("/auth", require("./routes/auth.routes"));
+app.use("/users", require("./routes/user.routes"));
+app.use("/services", require("./routes/service.routes"));
+app.use("/items", require("./routes/item.routes"));
+app.use("/bookings", require("./routes/booking.routes"));
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

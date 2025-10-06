@@ -1,12 +1,12 @@
 create extension if not exists pgcrypto;
-
-CREATE TABLE if not exists users (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name TEXT NOT NULL,
-  email TEXT UNIQUE NOT NULL,
-  password_hash TEXT NOT NULL,
-  role TEXT NOT NULL CHECK (role IN ('customer','provider','job_seeker','agent','admin')),
-  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','suspended','pending')),
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW()
+create table if not exists users (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  email text unique not null,
+  password_hash text not null,
+  role text not null check (role in ('customer','provider','job_seeker','agent','admin')),
+  status text not null default 'active' check (status in ('active','suspended','pending')),
+  created_at timestamp not null default now(),
+  updated_at timestamp not null default now()
 );
+create index if not exists idx_users_email on users(email);

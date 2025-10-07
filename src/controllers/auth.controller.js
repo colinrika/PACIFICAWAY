@@ -152,6 +152,7 @@ exports.login = async (req, res) => {
 
  main
 main
+main
     const token = signToken({ id: user.id, role: user.role, email: user.email });
     res.json({ token });
   } catch (e) {
@@ -163,5 +164,6 @@ exports.logout = async (_req, res) => {
 exports.logout = (_req, res) => {
 main
  main
+main
   res.json({ message: "Logged out (client should discard token)" });
 };

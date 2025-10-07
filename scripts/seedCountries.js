@@ -2,6 +2,7 @@
 require("dotenv").config();
 const fs = require("fs");
  main
+main
 const path = require("path");
 if (!process.env.DATABASE_URL) {
   console.error("DATABASE_URL is required to seed countries");
@@ -15,7 +16,6 @@ const CSV_FILE = path.join(__dirname, "../sql/data/countries.csv");
 
 (async () => {
   const rows = parseCsv(CSV_FILE);
-
 const CSV_FILE = path.join(__dirname, "../sql/data/countries.csv");
 
 const splitCsvLine = (line) => {
@@ -71,6 +71,7 @@ const parseCsv = (content) => {
   const rows = parseCsv(fileContent.replace(/^﻿/, ""));
  main
 
+main
   if (!rows.length) {
     console.log("No countries found in CSV. Nothing to seed.");
     process.exit(0);

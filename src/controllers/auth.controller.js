@@ -93,7 +93,6 @@ exports.login = async (req, res) => {
     if (!ok) {
       return res.status(401).json({ error: "Invalid credentials" });
     }
-
 const buildFullName = (firstName, lastName, fallbackName) => {
   const safeFirst = typeof firstName === "string" ? firstName.trim() : "";
   const safeLast = typeof lastName === "string" ? lastName.trim() : "";
@@ -152,6 +151,7 @@ exports.login = async (req, res) => {
     if (!ok) return res.status(401).json({ error: "Invalid credentials" });
 
  main
+main
     const token = signToken({ id: user.id, role: user.role, email: user.email });
     res.json({ token });
   } catch (e) {
@@ -162,5 +162,6 @@ exports.login = async (req, res) => {
 exports.logout = async (_req, res) => {
 exports.logout = (_req, res) => {
 main
+ main
   res.json({ message: "Logged out (client should discard token)" });
 };

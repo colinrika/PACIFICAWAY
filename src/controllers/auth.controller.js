@@ -17,29 +17,20 @@ exports.register = async (req, res) => {
       phone,
       phoneNumber,
     } = req.body;
-    const safeName = resolveName(name, firstName, lastName);
 
-    // Combine first/last name if needed
+    // Build safe name
     const safeName = resolveName(name, firstName, lastName);
 
     // Normalize phone number
     const safePhone = (() => {
-      const source =
+      const src =
         typeof phoneNumber === "string" && phoneNumber.trim()
           ? phoneNumber
           : phone;
-      return typeof source === "string" && source.trim()
-        ? source.trim()
-        : null;
+      return typeof src === "string" && src.trim() ? src.trim() : null;
     })();
-    let safeCountryId = null;
-    if (typeof countryId === "string" && countryId.trim()) {
-      const trimmedCountryId = countryId.trim();
-      const uuidPattern =
-        /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/;
-      if (!uuidPattern.test(trimmedCountryId)) {
 
-    // Validate countryId
+    // Validate and sanitize countryId
     let safeCountryId = null;
     if (typeof countryId === "string" && countryId.trim()) {
       const trimmed = countryId.trim();
@@ -50,38 +41,17 @@ exports.register = async (req, res) => {
           .status(400)
           .json({ error: "countryId must be a valid UUID" });
       }
-      safeCountryId = trimmedCountryId;
-    }
-
-    if (!safeName || !email || !password || !role) {
-      return res
-        .status(400)
-        .json({
-          error: "A name (or firstName/lastName), email, password, and role are required",
-        });
-    }
-
-    if (safeCountryId) {
-      safeCountryId = trimmed;
       const countryCheck = await pool.query(
         `SELECT id FROM countries WHERE id=$1`,
-        [safeCountryId]
+        [trimmed]
       );
       if (!countryCheck.rows[0]) {
         return res.status(400).json({ error: "countryId not found" });
       }
+      safeCountryId = trimmed;
     }
 
-    const hashed = await hashPassword(password);
-    const q = await pool.query(
-      `INSERT INTO users (name,email,password_hash,role,phone_number,country_id)
-       VALUES ($1,$2,$3,$4,$5,$6)
-       RETURNING id,name,email,role,status,created_at,updated_at,phone_number,country_id`,
-      [safeName, email, hashed, role, safePhone, safeCountryId]
-    );
-
-    const user = formatUserRow(q.rows[0]);
-    // Required fields
+    // Validate required fields
     if (!safeName || !email || !password || !role) {
       return res.status(400).json({
         error:
@@ -89,12 +59,14 @@ exports.register = async (req, res) => {
       });
     }
 
-    // Hash and insert
+    // Hash password
     const hashed = await hashPassword(password);
+
+    // Insert user
     const q = await pool.query(
-      `INSERT INTO users (name, email, password_hash, role, phone_number, country_id)
+      `INSERT INTO users (name,email,password_hash,role,phone_number,country_id)
        VALUES ($1,$2,$3,$4,$5,$6)
-       RETURNING id, name, email, role, status, created_at, updated_at, phone_number, country_id`,
+       RETURNING id,name,email,role,status,created_at,updated_at,phone_number,country_id`,
       [safeName, email, hashed, role, safePhone, safeCountryId]
     );
 
@@ -114,6 +86,7 @@ exports.register = async (req, res) => {
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
+
     if (!email || !password) {
       return res.status(400).json({ error: "email and password required" });
     }
@@ -128,9 +101,6 @@ exports.login = async (req, res) => {
     if (!ok) {
       return res.status(401).json({ error: "Invalid credentials" });
     }
-    const token = signToken({ id: user.id, role: user.role, email: user.email });
-    res.json({ token });
-  } catch (e) {
 
     const token = signToken({ id: user.id, role: user.role, email: user.email });
     res.json({ token });
@@ -140,7 +110,6 @@ exports.login = async (req, res) => {
   }
 };
 
-exports.logout = async (_req, res) => {
 exports.logout = (_req, res) => {
   res.json({ message: "Logged out (client should discard token)" });
 };

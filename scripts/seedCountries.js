@@ -1,7 +1,5 @@
 #!/usr/bin/env node
 require("dotenv").config();
-
-const path = require("path");
 const fs = require("fs");
 const path = require("path");
 
@@ -11,23 +9,22 @@ if (!process.env.DATABASE_URL) {
 }
 
 const pool = require("../src/config/db");
-const { parseCsv } = require("./utils/csv");
 
-// --- CSV helpers -----------------------------------------------------
+// ---------------- CSV Helpers ----------------
 
 const splitCsvLine = (line) => {
   const values = [];
   let current = "";
   let inQuotes = false;
 
-  for (let i = 0; i < line.length; i += 1) {
+  for (let i = 0; i < line.length; i++) {
     const char = line[i];
 
     if (char === '"') {
       const next = line[i + 1];
       if (inQuotes && next === '"') {
         current += '"';
-        i += 1;
+        i++;
       } else {
         inQuotes = !inQuotes;
       }
@@ -40,14 +37,14 @@ const splitCsvLine = (line) => {
   }
 
   values.push(current);
-  return values.map((value) => value.trim());
+  return values.map((v) => v.trim());
 };
 
 const parseCsv = (content) => {
   const lines = content
     .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0);
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0);
 
   if (lines.length <= 1) return [];
 
@@ -61,92 +58,83 @@ const parseCsv = (content) => {
   });
 };
 
-// --- Seeder ----------------------------------------------------------
+// ---------------- Seeder ----------------
 
 const CSV_FILE = path.join(__dirname, "../sql/data/countries.csv");
 
 (async () => {
-  const rows = parseCsv(CSV_FILE);
-  const fileContent = fs.readFileSync(CSV_FILE, "utf8");
-  const rows = parseCsv(fileContent.replace(/^﻿/, "")); // strip BOM if present
-
-  if (!rows.length) {
-    console.log("No countries found in CSV. Nothing to seed.");
-    process.exit(0);
-  }
-
-  const client = await pool.connect();
   try {
-    await client.query("BEGIN");
-    const tableCheck = await client.query(
-      "SELECT to_regclass('public.countries') AS identifier"
-    );
+    const fileContent = fs.readFileSync(CSV_FILE, "utf8");
+    const rows = parseCsv(fileContent.replace(/^﻿/, "")); // strip BOM if present
 
-
-  try {
-    await client.query("BEGIN");
-
-    const tableCheck = await client.query(
-      "SELECT to_regclass('public.countries') AS identifier"
-    );
-    if (!tableCheck.rows[0] || !tableCheck.rows[0].identifier) {
-      throw new Error("countries table does not exist. Run migrations first.");
+    if (!rows.length) {
+      console.log("No countries found in CSV. Nothing to seed.");
+      process.exit(0);
     }
 
-    let processed = 0;
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
 
-    for (const row of rows) {
-      const name = row.name ? row.name.trim() : "";
-      const iso = row.iso_code ? row.iso_code.trim().toUpperCase() : null;
-
-      if (!name) {
-        continue;
+      const tableCheck = await client.query(
+        "SELECT to_regclass('public.countries') AS identifier"
+      );
+      if (!tableCheck.rows[0] || !tableCheck.rows[0].identifier) {
+        throw new Error("countries table does not exist. Run migrations first.");
       }
 
-      if (!name) continue;
-      if (iso && iso.length !== 2) {
-        throw new Error(`Invalid ISO code for country "${name}": ${iso}`);
-      }
+      let processed = 0;
 
-      try {
-        await client.query(
-          `INSERT INTO countries (name, iso_code)
-           VALUES ($1, $2)
-           ON CONFLICT (name)
-           DO UPDATE SET iso_code = EXCLUDED.iso_code, updated_at = NOW()`,
-          [name, iso || null]
-        );
-      } catch (error) {
-        if (error.code === "23505" && error.constraint === "countries_iso_code_key" && iso) {
-        if (
-          error.code === "23505" &&
-          error.constraint === "countries_iso_code_key" &&
-          iso
-        ) {
-          await client.query(
-            `UPDATE countries
-             SET name = $1, updated_at = NOW()
-             WHERE iso_code = $2`,
-            [name, iso]
-          );
-        } else {
-          throw error;
+      for (const row of rows) {
+        const name = row.name ? row.name.trim() : "";
+        const iso = row.iso_code ? row.iso_code.trim().toUpperCase() : null;
+
+        if (!name) continue;
+
+        if (iso && iso.length !== 2) {
+          throw new Error(`Invalid ISO code for country "${name}": ${iso}`);
         }
+
+        try {
+          await client.query(
+            `INSERT INTO countries (name, iso_code)
+             VALUES ($1, $2)
+             ON CONFLICT (name)
+             DO UPDATE SET iso_code = EXCLUDED.iso_code, updated_at = NOW()`,
+            [name, iso || null]
+          );
+        } catch (error) {
+          if (
+            error.code === "23505" &&
+            error.constraint === "countries_iso_code_key" &&
+            iso
+          ) {
+            await client.query(
+              `UPDATE countries
+               SET name = $1, updated_at = NOW()
+               WHERE iso_code = $2`,
+              [name, iso]
+            );
+          } else {
+            throw error;
+          }
+        }
+
+        processed++;
       }
-      processed += 1;
-    }
 
-      processed += 1;
+      await client.query("COMMIT");
+      console.log(`✅ Seeded ${processed} countries.`);
+    } catch (err) {
+      await client.query("ROLLBACK");
+      console.error("❌ Failed to seed countries:", err.message);
+      process.exitCode = 1;
+    } finally {
+      client.release();
+      await pool.end();
     }
-
-    await client.query("COMMIT");
-    console.log(`Seeded ${processed} countries.`);
-  } catch (error) {
-    await client.query("ROLLBACK");
-    console.error("Failed to seed countries", error);
-    process.exitCode = 1;
-  } finally {
-    client.release();
-    await pool.end();
+  } catch (fatal) {
+    console.error("Fatal error reading CSV:", fatal.message);
+    process.exit(1);
   }
 })();

@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 require("dotenv").config();
+
+const path = require("path");
 const fs = require("fs");
 const path = require("path");
 
@@ -9,6 +11,7 @@ if (!process.env.DATABASE_URL) {
 }
 
 const pool = require("../src/config/db");
+const { parseCsv } = require("./utils/csv");
 
 // --- CSV helpers -----------------------------------------------------
 
@@ -63,6 +66,7 @@ const parseCsv = (content) => {
 const CSV_FILE = path.join(__dirname, "../sql/data/countries.csv");
 
 (async () => {
+  const rows = parseCsv(CSV_FILE);
   const fileContent = fs.readFileSync(CSV_FILE, "utf8");
   const rows = parseCsv(fileContent.replace(/^﻿/, "")); // strip BOM if present
 
@@ -72,6 +76,12 @@ const CSV_FILE = path.join(__dirname, "../sql/data/countries.csv");
   }
 
   const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const tableCheck = await client.query(
+      "SELECT to_regclass('public.countries') AS identifier"
+    );
+
 
   try {
     await client.query("BEGIN");
@@ -89,6 +99,10 @@ const CSV_FILE = path.join(__dirname, "../sql/data/countries.csv");
       const name = row.name ? row.name.trim() : "";
       const iso = row.iso_code ? row.iso_code.trim().toUpperCase() : null;
 
+      if (!name) {
+        continue;
+      }
+
       if (!name) continue;
       if (iso && iso.length !== 2) {
         throw new Error(`Invalid ISO code for country "${name}": ${iso}`);
@@ -103,6 +117,7 @@ const CSV_FILE = path.join(__dirname, "../sql/data/countries.csv");
           [name, iso || null]
         );
       } catch (error) {
+        if (error.code === "23505" && error.constraint === "countries_iso_code_key" && iso) {
         if (
           error.code === "23505" &&
           error.constraint === "countries_iso_code_key" &&
@@ -118,6 +133,8 @@ const CSV_FILE = path.join(__dirname, "../sql/data/countries.csv");
           throw error;
         }
       }
+      processed += 1;
+    }
 
       processed += 1;
     }

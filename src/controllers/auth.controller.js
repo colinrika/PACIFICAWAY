@@ -17,6 +17,7 @@ exports.register = async (req, res) => {
       phone,
       phoneNumber,
     } = req.body;
+    const safeName = resolveName(name, firstName, lastName);
 
     // Combine first/last name if needed
     const safeName = resolveName(name, firstName, lastName);
@@ -31,6 +32,12 @@ exports.register = async (req, res) => {
         ? source.trim()
         : null;
     })();
+    let safeCountryId = null;
+    if (typeof countryId === "string" && countryId.trim()) {
+      const trimmedCountryId = countryId.trim();
+      const uuidPattern =
+        /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/;
+      if (!uuidPattern.test(trimmedCountryId)) {
 
     // Validate countryId
     let safeCountryId = null;
@@ -43,6 +50,18 @@ exports.register = async (req, res) => {
           .status(400)
           .json({ error: "countryId must be a valid UUID" });
       }
+      safeCountryId = trimmedCountryId;
+    }
+
+    if (!safeName || !email || !password || !role) {
+      return res
+        .status(400)
+        .json({
+          error: "A name (or firstName/lastName), email, password, and role are required",
+        });
+    }
+
+    if (safeCountryId) {
       safeCountryId = trimmed;
       const countryCheck = await pool.query(
         `SELECT id FROM countries WHERE id=$1`,
@@ -53,6 +72,15 @@ exports.register = async (req, res) => {
       }
     }
 
+    const hashed = await hashPassword(password);
+    const q = await pool.query(
+      `INSERT INTO users (name,email,password_hash,role,phone_number,country_id)
+       VALUES ($1,$2,$3,$4,$5,$6)
+       RETURNING id,name,email,role,status,created_at,updated_at,phone_number,country_id`,
+      [safeName, email, hashed, role, safePhone, safeCountryId]
+    );
+
+    const user = formatUserRow(q.rows[0]);
     // Required fields
     if (!safeName || !email || !password || !role) {
       return res.status(400).json({
@@ -100,6 +128,9 @@ exports.login = async (req, res) => {
     if (!ok) {
       return res.status(401).json({ error: "Invalid credentials" });
     }
+    const token = signToken({ id: user.id, role: user.role, email: user.email });
+    res.json({ token });
+  } catch (e) {
 
     const token = signToken({ id: user.id, role: user.role, email: user.email });
     res.json({ token });
@@ -109,6 +140,7 @@ exports.login = async (req, res) => {
   }
 };
 
+exports.logout = async (_req, res) => {
 exports.logout = (_req, res) => {
   res.json({ message: "Logged out (client should discard token)" });
 };

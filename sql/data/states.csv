@@ -1,6 +1,6 @@
-country_iso_code,country_name,state_name,state_code
-US,United States,California,CA
-US,United States,New York,NY
+country_id,name,code
+US,California,CA
+US,New York,NY
 US,United States,Texas,TX
 US,United States,Washington,WA
 CA,Canada,Ontario,ON

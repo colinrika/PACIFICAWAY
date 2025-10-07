@@ -17,7 +17,9 @@ exports.register = async (req, res) => {
       phone,
       phoneNumber,
     } = req.body;
+
     const safeName = resolveName(name, firstName, lastName);
+
     const safePhone = (() => {
       const source =
         typeof phoneNumber === "string" && phoneNumber.trim()
@@ -27,33 +29,33 @@ exports.register = async (req, res) => {
         ? source.trim()
         : null;
     })();
+
     let safeCountryId = null;
     if (typeof countryId === "string" && countryId.trim()) {
-      const trimmedCountryId = countryId.trim();
+      const trimmed = countryId.trim();
       const uuidPattern =
         /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/;
-      if (!uuidPattern.test(trimmedCountryId)) {
+      if (!uuidPattern.test(trimmed)) {
         return res
           .status(400)
           .json({ error: "countryId must be a valid UUID" });
       }
-      safeCountryId = trimmedCountryId;
+      safeCountryId = trimmed;
     }
 
     if (!safeName || !email || !password || !role) {
-      return res
-        .status(400)
-        .json({
-          error: "A name (or firstName/lastName), email, password, and role are required",
-        });
+      return res.status(400).json({
+        error:
+          "A name (or firstName/lastName), email, password, and role are required",
+      });
     }
 
     if (safeCountryId) {
-      const countryCheck = await pool.query(
+      const check = await pool.query(
         `SELECT id FROM countries WHERE id=$1`,
         [safeCountryId]
       );
-      if (!countryCheck.rows[0]) {
+      if (!check.rows[0]) {
         return res.status(400).json({ error: "countryId not found" });
       }
     }
@@ -67,72 +69,17 @@ exports.register = async (req, res) => {
     );
 
     const user = formatUserRow(q.rows[0]);
-    const token = signToken({ id: user.id, role: user.role, email: user.email });
+    const token = signToken({
+      id: user.id,
+      role: user.role,
+      email: user.email,
+    });
 
     res.status(201).json({ user, token });
   } catch (e) {
     if (e.code === "23505") {
       return res.status(409).json({ error: "Email already registered" });
     }
-    res.status(500).json({ error: "Registration failed" });
-  }
-};
-
-exports.login = async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    if (!email || !password) {
-      return res.status(400).json({ error: "email and password required" });
-    }
-    const q = await pool.query("SELECT * FROM users WHERE email=$1", [email]);
-    const user = q.rows[0];
-    if (!user) {
-      return res.status(401).json({ error: "Invalid credentials" });
-    }
-    const ok = await comparePassword(password, user.password_hash);
-    if (!ok) {
-      return res.status(401).json({ error: "Invalid credentials" });
-    }
-const buildFullName = (firstName, lastName, fallbackName) => {
-  const safeFirst = typeof firstName === "string" ? firstName.trim() : "";
-  const safeLast = typeof lastName === "string" ? lastName.trim() : "";
-  if (safeFirst || safeLast) return [safeFirst, safeLast].filter(Boolean).join(" ");
-  return typeof fallbackName === "string" ? fallbackName.trim() : "";
-};
-
-const splitName = (name) => {
-  if (typeof name !== "string") return { firstName: null, lastName: null };
-  const trimmed = name.trim();
-  if (!trimmed) return { firstName: null, lastName: null };
-  const [first, ...rest] = trimmed.split(/\s+/);
-  return { firstName: first || null, lastName: rest.length ? rest.join(" ") : null };
-};
-
-exports.register = async (req, res) => {
-  try {
-    const { name, firstName, lastName, email, password, role } = req.body;
-    const fullName = buildFullName(firstName, lastName, name);
-    if (!fullName || !email || !password || !role)
-      return res.status(400).json({ error: "firstName (or name), email, password, role are required" });
-
-    const hashed = await hashPassword(password);
-    const q = await pool.query(
-      `INSERT INTO users (name,email,password_hash,role)
-       VALUES ($1,$2,$3,$4)
-       RETURNING id,name,email,role,status,created_at`,
-      [fullName, email, hashed, role]
-    );
-
-    const user = q.rows[0];
-    const { firstName: userFirstName, lastName: userLastName } = splitName(user.name);
-    const token = signToken({ id: user.id, role: user.role, email: user.email });
-
-    res.status(201).json({
-      user: { ...user, firstName: userFirstName, lastName: userLastName },
-      token,
-    });
-  } catch (e) {
-    if (e.code === "23505") return res.status(409).json({ error: "Email already registered" });
     res.status(500).json({ error: "Registration failed" });
   }
 };
@@ -150,20 +97,17 @@ exports.login = async (req, res) => {
     const ok = await comparePassword(password, user.password_hash);
     if (!ok) return res.status(401).json({ error: "Invalid credentials" });
 
- main
-main
-main
-    const token = signToken({ id: user.id, role: user.role, email: user.email });
+    const token = signToken({
+      id: user.id,
+      role: user.role,
+      email: user.email,
+    });
     res.json({ token });
   } catch (e) {
     res.status(500).json({ error: "Login failed" });
   }
 };
 
-exports.logout = async (_req, res) => {
 exports.logout = (_req, res) => {
-main
- main
-main
   res.json({ message: "Logged out (client should discard token)" });
 };

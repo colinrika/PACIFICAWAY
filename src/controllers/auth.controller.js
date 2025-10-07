@@ -78,6 +78,21 @@ exports.register = async (req, res) => {
   }
 };
 
+exports.login = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ error: "email and password required" });
+    }
+    const q = await pool.query("SELECT * FROM users WHERE email=$1", [email]);
+    const user = q.rows[0];
+    if (!user) {
+      return res.status(401).json({ error: "Invalid credentials" });
+    }
+    const ok = await comparePassword(password, user.password_hash);
+    if (!ok) {
+      return res.status(401).json({ error: "Invalid credentials" });
+    }
 
 const buildFullName = (firstName, lastName, fallbackName) => {
   const safeFirst = typeof firstName === "string" ? firstName.trim() : "";
@@ -136,6 +151,7 @@ exports.login = async (req, res) => {
     const ok = await comparePassword(password, user.password_hash);
     if (!ok) return res.status(401).json({ error: "Invalid credentials" });
 
+ main
     const token = signToken({ id: user.id, role: user.role, email: user.email });
     res.json({ token });
   } catch (e) {
@@ -143,6 +159,8 @@ exports.login = async (req, res) => {
   }
 };
 
+exports.logout = async (_req, res) => {
 exports.logout = (_req, res) => {
+main
   res.json({ message: "Logged out (client should discard token)" });
 };

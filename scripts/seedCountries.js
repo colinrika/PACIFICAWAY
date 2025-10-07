@@ -2,6 +2,9 @@
 require("dotenv").config();
 
 const path = require("path");
+const fs = require("fs");
+const path = require("path");
+
 if (!process.env.DATABASE_URL) {
   console.error("DATABASE_URL is required to seed countries");
   process.exit(1);
@@ -10,10 +13,62 @@ if (!process.env.DATABASE_URL) {
 const pool = require("../src/config/db");
 const { parseCsv } = require("./utils/csv");
 
+// --- CSV helpers -----------------------------------------------------
+
+const splitCsvLine = (line) => {
+  const values = [];
+  let current = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i += 1) {
+    const char = line[i];
+
+    if (char === '"') {
+      const next = line[i + 1];
+      if (inQuotes && next === '"') {
+        current += '"';
+        i += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === "," && !inQuotes) {
+      values.push(current);
+      current = "";
+    } else {
+      current += char;
+    }
+  }
+
+  values.push(current);
+  return values.map((value) => value.trim());
+};
+
+const parseCsv = (content) => {
+  const lines = content
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+
+  if (lines.length <= 1) return [];
+
+  const headers = splitCsvLine(lines[0]).map((h) => h.toLowerCase());
+  return lines.slice(1).map((line) => {
+    const values = splitCsvLine(line);
+    return headers.reduce((acc, header, i) => {
+      acc[header] = values[i] ? values[i].trim() : "";
+      return acc;
+    }, {});
+  });
+};
+
+// --- Seeder ----------------------------------------------------------
+
 const CSV_FILE = path.join(__dirname, "../sql/data/countries.csv");
 
 (async () => {
   const rows = parseCsv(CSV_FILE);
+  const fileContent = fs.readFileSync(CSV_FILE, "utf8");
+  const rows = parseCsv(fileContent.replace(/^﻿/, "")); // strip BOM if present
 
   if (!rows.length) {
     console.log("No countries found in CSV. Nothing to seed.");
@@ -27,11 +82,19 @@ const CSV_FILE = path.join(__dirname, "../sql/data/countries.csv");
       "SELECT to_regclass('public.countries') AS identifier"
     );
 
+
+  try {
+    await client.query("BEGIN");
+
+    const tableCheck = await client.query(
+      "SELECT to_regclass('public.countries') AS identifier"
+    );
     if (!tableCheck.rows[0] || !tableCheck.rows[0].identifier) {
       throw new Error("countries table does not exist. Run migrations first.");
     }
 
     let processed = 0;
+
     for (const row of rows) {
       const name = row.name ? row.name.trim() : "";
       const iso = row.iso_code ? row.iso_code.trim().toUpperCase() : null;
@@ -40,6 +103,7 @@ const CSV_FILE = path.join(__dirname, "../sql/data/countries.csv");
         continue;
       }
 
+      if (!name) continue;
       if (iso && iso.length !== 2) {
         throw new Error(`Invalid ISO code for country "${name}": ${iso}`);
       }
@@ -54,6 +118,11 @@ const CSV_FILE = path.join(__dirname, "../sql/data/countries.csv");
         );
       } catch (error) {
         if (error.code === "23505" && error.constraint === "countries_iso_code_key" && iso) {
+        if (
+          error.code === "23505" &&
+          error.constraint === "countries_iso_code_key" &&
+          iso
+        ) {
           await client.query(
             `UPDATE countries
              SET name = $1, updated_at = NOW()
@@ -66,6 +135,10 @@ const CSV_FILE = path.join(__dirname, "../sql/data/countries.csv");
       }
       processed += 1;
     }
+
+      processed += 1;
+    }
+
     await client.query("COMMIT");
     console.log(`Seeded ${processed} countries.`);
   } catch (error) {

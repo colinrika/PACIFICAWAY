@@ -26,6 +26,11 @@ app.use("/bookings", require("./routes/booking.routes"));
 app.use("/countries", require("./routes/country.routes"));
 app.use("/states", require("./routes/state.routes"));
 app.use("/cities", require("./routes/city.routes"));
+app.use("/states", require("./routes/state.routes"));
+app.use("/cities", require("./routes/city.routes"));
+
+ main
+ main
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

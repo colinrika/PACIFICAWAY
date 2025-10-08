@@ -3,6 +3,7 @@
     "name": "PACIFICAWAY API",
     "_postman_id": "d75f6fbe-4b1d-4cfa-96f8-bb5e1e7087c0",
     "description": "Collection exercising the public endpoints plus the full authentication, admin, catalog, and booking workflows exposed by the PACIFICAWAY API server.",
+    "description": "Collection covering the public endpoints, authentication, and CRUD flows exposed by the PACIFICAWAY API server.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -33,6 +34,9 @@
                 "{{baseUrl}}"
               ],
               "path": []
+              "path": [
+                ""
+              ]
             }
           },
           "response": []
@@ -111,6 +115,7 @@
               }
             }
           ],
+          "name": "Register",
           "request": {
             "method": "POST",
             "header": [
@@ -122,6 +127,7 @@
             "body": {
               "mode": "raw",
               "raw": "{\n  \"firstName\": \"Ada\",\n  \"lastName\": \"Lovelace\",\n  \"email\": \"{{providerEmail}}\",\n  \"password\": \"{{providerPassword}}\",\n  \"role\": \"provider\",\n  \"phoneNumber\": \"+1-555-0000\"\n}"
+              "raw": "{\n  \"firstName\": \"Ada\",\n  \"lastName\": \"Lovelace\",\n  \"email\": \"ada@example.com\",\n  \"password\": \"P@ssw0rd!\",\n  \"role\": \"provider\",\n  \"phoneNumber\": \"+1-555-0000\",\n  \"countryId\": \"{{countryId}}\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/auth/register",
@@ -168,6 +174,7 @@
               }
             }
           ],
+          "name": "Login",
           "request": {
             "method": "POST",
             "header": [
@@ -179,6 +186,7 @@
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"{{providerEmail}}\",\n  \"password\": \"{{providerPassword}}\"\n}"
+              "raw": "{\n  \"email\": \"ada@example.com\",\n  \"password\": \"P@ssw0rd!\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/auth/login",
@@ -289,6 +297,7 @@
               }
             }
           ],
+          "name": "Logout",
           "request": {
             "method": "POST",
             "header": [
@@ -303,12 +312,19 @@
             },
             "url": {
               "raw": "{{baseUrl}}/auth/login",
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "auth",
                 "login"
+                "logout"
               ]
             }
           },
@@ -673,16 +689,22 @@
               }
             }
           ],
+      "name": "Services",
+      "item": [
+        {
+          "name": "List Services",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/cities",
+              "raw": "{{baseUrl}}/services",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "cities"
+                "services"
               ]
             }
           },
@@ -726,6 +748,7 @@
               }
             }
           ],
+          "name": "Create Service",
           "request": {
             "method": "POST",
             "header": [
@@ -736,6 +759,7 @@
               {
                 "key": "Authorization",
                 "value": "Bearer {{adminToken}}"
+                "value": "Bearer {{authToken}}"
               }
             ],
             "body": {
@@ -778,6 +802,9 @@
           "request": {
             "method": "GET",
             "header": [],
+            "url": {
+              "raw": "{\n  \"name\": \"Premium Cleaning\",\n  \"description\": \"Full home cleaning package\",\n  \"price\": 150.0,\n  \"category\": \"Cleaning\"\n}"
+            },
             "url": {
               "raw": "{{baseUrl}}/services",
               "host": [
@@ -824,6 +851,9 @@
           ],
           "request": {
             "method": "POST",
+          "name": "Update Service",
+          "request": {
+            "method": "PATCH",
             "header": [
               {
                 "key": "Content-Type",
@@ -840,11 +870,17 @@
             },
             "url": {
               "raw": "{{baseUrl}}/services",
+              "raw": "{\n  \"description\": \"Updated description\",\n  \"price\": 175.0,\n  \"active\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/services/{{serviceId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "services"
+                "services",
+                "{{serviceId}}"
               ]
             }
           },
@@ -887,6 +923,11 @@
                 "key": "Content-Type",
                 "value": "application/json"
               },
+              {
+          "name": "Delete Service",
+          "request": {
+            "method": "DELETE",
+            "header": [
               {
                 "key": "Authorization",
                 "value": "Bearer {{authToken}}"
@@ -992,6 +1033,7 @@
             "body": {
               "mode": "raw",
               "raw": "{\n  \"name\": \"{{itemName}}\",\n  \"description\": \"Plant-based cleaning solution\",\n  \"price\": 25.5,\n  \"stock\": 10\n}"
+              "raw": "{\n  \"name\": \"Eco Detergent\",\n  \"description\": \"Plant-based cleaning solution\",\n  \"price\": 25.5,\n  \"stock\": 10\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/items",
@@ -1343,12 +1385,74 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/services/{{serviceId}}",
+      "name": "Countries",
+      "item": [
+        {
+          "name": "List Countries",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/countries",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "countries"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Country (admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Exampleland\",\n  \"isoCode\": \"EX\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/countries",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "services",
                 "{{serviceId}}"
+                "countries"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "States",
+      "item": [
+        {
+          "name": "List States",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/states",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "states"
               ]
             }
           },
@@ -1381,6 +1485,59 @@
               }
             }
           ],
+          "name": "Create State (admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Example State\",\n  \"code\": \"EXS\",\n  \"countryId\": \"{{countryId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/states",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "states"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Cities",
+      "item": [
+        {
+          "name": "List Cities",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/cities",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cities"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create City (admin)",
           "request": {
             "method": "POST",
             "header": [
@@ -1391,12 +1548,27 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/auth/logout",
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Example City\",\n  \"stateId\": \"{{stateId}}\",\n  \"countryId\": \"{{countryId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/cities",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "auth",
                 "logout"
+                "cities"
               ]
             }
           },
@@ -1432,6 +1604,15 @@
     },
     {
       "key": "adminPassword",
+      "key": "serviceId",
+      "value": ""
+    },
+    {
+      "key": "bookingId",
+      "value": ""
+    },
+    {
+      "key": "itemId",
       "value": ""
     },
     {
@@ -1492,6 +1673,8 @@
     },
     {
       "key": "bookingId",
+      "value": ""
+      "key": "cityId",
       "value": ""
     }
   ]

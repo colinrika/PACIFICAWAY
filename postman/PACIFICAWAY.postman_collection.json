@@ -662,7 +662,7 @@
   "variable": [
     {
       "key": "baseUrl",
-      "value": "http://localhost:4000"
+      "value": "https://laughing-funicular-rvgpqj5wqxx2xgqr-4000.app.github.dev"
     },
     {
       "key": "authToken",

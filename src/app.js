@@ -7,6 +7,9 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+app.get("/", (_req, res) => res.send("PACIFICAWAY API is running 🚀"));
+
+app.get("/health", async (_req, res) => {
 app.get("/", (req, res) => res.send("PACIFICAWAY API is running 🚀"));
 
 app.get("/health", async (req, res) => {

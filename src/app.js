@@ -10,6 +10,9 @@ app.use(express.json());
 app.get("/", (_req, res) => res.send("PACIFICAWAY API is running 🚀"));
 
 app.get("/health", async (_req, res) => {
+app.get("/", (req, res) => res.send("PACIFICAWAY API is running 🚀"));
+
+app.get("/health", async (req, res) => {
   try {
     const r = await pool.query("SELECT NOW() as now");
     res.json({ status: "ok", time: r.rows[0].now });

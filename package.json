@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "test": "node scripts/jest-lite.js",
+    "test": "jest",
     "seed:cities": "node scripts/seedCities.js",
     "seed:countries": "node scripts/seedCountries.js",
     "seed:states": "node scripts/seedStates.js"
@@ -20,11 +20,8 @@
     "pg": "^8.16.3"
   },
   "devDependencies": {
-    "jest": "^29.7.0",
+    "jest": "^30.2.0",
     "nodemon": "^3.1.10",
-    "supertest": "^7.1.1"
-  },
-  "jest": {
-    "testEnvironment": "node"
+    "supertest": "^7.1.4"
   }
 }

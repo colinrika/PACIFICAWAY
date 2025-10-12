@@ -7,12 +7,11 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Root endpoint
 app.get("/", (_req, res) => res.send("PACIFICAWAY API is running 🚀"));
 
+// Health check
 app.get("/health", async (_req, res) => {
-app.get("/", (req, res) => res.send("PACIFICAWAY API is running 🚀"));
-
-app.get("/health", async (req, res) => {
   try {
     const r = await pool.query("SELECT NOW() as now");
     res.json({ status: "ok", time: r.rows[0].now });
@@ -21,6 +20,7 @@ app.get("/health", async (req, res) => {
   }
 });
 
+// Routes
 app.use("/auth", require("./routes/auth.routes"));
 app.use("/users", require("./routes/user.routes"));
 app.use("/services", require("./routes/service.routes"));
@@ -30,4 +30,5 @@ app.use("/countries", require("./routes/country.routes"));
 app.use("/states", require("./routes/state.routes"));
 app.use("/cities", require("./routes/city.routes"));
 
+// Export app
 module.exports = app;

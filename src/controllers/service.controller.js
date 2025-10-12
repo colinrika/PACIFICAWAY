@@ -1,4 +1,5 @@
 const pool = require("../config/db");
+const { ensureMarketplaceSchema } = require("../utils/schema");
 
 const baseServiceSelect = `
   SELECT s.*, u.name AS provider_name, c.name AS category
@@ -63,6 +64,7 @@ const handlePgError = (res, error, fallbackMessage) => {
 
 exports.create = async (req, res) => {
   try {
+    await ensureMarketplaceSchema();
     const { name, description, categoryId, category, price } = req.body;
     if (!name || price == null) {
       return res.status(400).json({ error: "name and price required" });
@@ -89,6 +91,7 @@ exports.create = async (req, res) => {
 
 exports.list = async (_req, res) => {
   try {
+    await ensureMarketplaceSchema();
     const { rows } = await pool.query(
       `${baseServiceSelect} ORDER BY s.created_at DESC`
     );
@@ -100,6 +103,7 @@ exports.list = async (_req, res) => {
 
 exports.update = async (req, res) => {
   try {
+    await ensureMarketplaceSchema();
     const { id } = req.params;
     const { name, description, categoryId, category, price, active } = req.body;
 
@@ -164,6 +168,7 @@ exports.update = async (req, res) => {
 
 exports.remove = async (req, res) => {
   try {
+    await ensureMarketplaceSchema();
     const q = await pool.query(
       `DELETE FROM services WHERE id=$1 AND provider_id=$2 RETURNING id`,
       [req.params.id, req.user.id]

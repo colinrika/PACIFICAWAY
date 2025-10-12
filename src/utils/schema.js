@@ -24,13 +24,35 @@ const ensureServicesTable = async () => {
     ALTER TABLE IF EXISTS services
       ADD COLUMN IF NOT EXISTS provider_id uuid,
       ADD COLUMN IF NOT EXISTS category_id uuid,
-      ADD COLUMN IF NOT EXISTS name text,
+      ADD COLUMN IF NOT EXISTS title text,
       ADD COLUMN IF NOT EXISTS description text,
       ADD COLUMN IF NOT EXISTS price numeric(12,2),
       ADD COLUMN IF NOT EXISTS active boolean DEFAULT true,
       ADD COLUMN IF NOT EXISTS created_at timestamp DEFAULT now(),
       ADD COLUMN IF NOT EXISTS updated_at timestamp DEFAULT now()
   `);
+
+  await pool.query(`
+    DO $$
+    BEGIN
+      IF EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'services'
+          AND column_name = 'name'
+      ) THEN
+        EXECUTE $$UPDATE services
+                 SET title = COALESCE(title, name)
+                 WHERE title IS NULL AND name IS NOT NULL$$;
+      END IF;
+    END
+    $$;
+  `);
+
+  await pool.query(
+    "ALTER TABLE IF EXISTS services DROP COLUMN IF EXISTS name"
+  );
 
   await pool.query(
     "UPDATE services SET active = true WHERE active IS NULL"

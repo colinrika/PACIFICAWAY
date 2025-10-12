@@ -12,15 +12,50 @@ create table if not exists services (
   id uuid primary key default gen_random_uuid()
 );
 
+do $$
+begin
+  if not exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'services'
+      and column_name = 'title'
+  ) and exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'services'
+      and column_name = 'name'
+  ) then
+    execute 'alter table services rename column name to title';
+  end if;
+end
+$$;
+
 alter table services
   add column if not exists provider_id uuid,
   add column if not exists category_id uuid,
-  add column if not exists name text,
+  add column if not exists title text,
   add column if not exists description text,
   add column if not exists price numeric(12,2),
   add column if not exists active boolean default true,
   add column if not exists created_at timestamp default now(),
   add column if not exists updated_at timestamp default now();
+
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'services'
+      and column_name = 'name'
+  ) then
+    execute $$update services
+             set title = coalesce(title, name)
+             where title is null and name is not null$$;
+  end if;
+end
+$$;
+
+alter table if exists services drop column if exists name;
 
 update services set active = true where active is null;
 update services set created_at = now() where created_at is null;

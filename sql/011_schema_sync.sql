@@ -70,9 +70,9 @@ begin
       and table_name = 'services'
       and column_name = 'name'
   ) then
-    execute $$update services
+    execute 'update services
              set title = coalesce(title, name)
-             where title is null and name is not null$$;
+             where title is null and name is not null';
   end if;
 end
 $$;

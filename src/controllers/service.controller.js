@@ -1,15 +1,28 @@
 const pool = require("../config/db");
+const { ensureMarketplaceSchema } = require("../utils/schema");
 
 const baseServiceSelect = `
   SELECT s.*, u.name AS provider_name, c.name AS category
   FROM services s
   JOIN users u ON u.id = s.provider_id
-  LEFT JOIN service_categories c ON c.id = s.category_id
+  LEFT JOIN categories c ON c.id = s.category_id
 `;
+
+const normalizeService = (service) => {
+  if (!service) return service;
+  if (
+    (service.name === null || service.name === undefined) &&
+    service.title !== null &&
+    service.title !== undefined
+  ) {
+    return { ...service, name: service.title };
+  }
+  return service;
+};
 
 const fetchServiceById = async (id) => {
   const { rows } = await pool.query(`${baseServiceSelect} WHERE s.id = $1`, [id]);
-  return rows[0];
+  return normalizeService(rows[0]);
 };
 
 const resolveCategoryInput = async (categoryId, categoryName) => {
@@ -19,7 +32,7 @@ const resolveCategoryInput = async (categoryId, categoryName) => {
     }
 
     const { rows } = await pool.query(
-      "SELECT id FROM service_categories WHERE id = $1",
+      "SELECT id FROM categories WHERE id = $1",
       [categoryId]
     );
     if (!rows[0]) {
@@ -35,10 +48,11 @@ const resolveCategoryInput = async (categoryId, categoryName) => {
     if (!name) return { touched: true, value: null };
 
     const { rows } = await pool.query(
-      `INSERT INTO service_categories (name)
+      `INSERT INTO categories (name)
        VALUES ($1)
        ON CONFLICT (name)
-       DO UPDATE SET name = EXCLUDED.name
+       DO UPDATE SET name = EXCLUDED.name,
+         updated_at = NOW()
        RETURNING id`,
       [name]
     );
@@ -63,8 +77,16 @@ const handlePgError = (res, error, fallbackMessage) => {
 
 exports.create = async (req, res) => {
   try {
-    const { name, description, categoryId, category, price } = req.body;
-    if (!name || price == null) {
+    await ensureMarketplaceSchema();
+    const { title, name, description, categoryId, category, price } = req.body;
+
+    const serviceTitleRaw = title ?? name;
+    const serviceTitle =
+      serviceTitleRaw === undefined || serviceTitleRaw === null
+        ? ""
+        : String(serviceTitleRaw).trim();
+
+    if (!serviceTitle || price == null) {
       return res.status(400).json({ error: "name and price required" });
     }
 
@@ -74,10 +96,10 @@ exports.create = async (req, res) => {
       : null;
 
     const inserted = await pool.query(
-      `INSERT INTO services (name, description, category_id, price, provider_id)
+      `INSERT INTO services (title, description, category_id, price, provider_id)
        VALUES ($1, $2, $3, $4, $5)
        RETURNING id`,
-      [name, description ?? null, resolvedCategoryId, price, req.user.id]
+      [serviceTitle, description ?? null, resolvedCategoryId, price, req.user.id]
     );
 
     const service = await fetchServiceById(inserted.rows[0].id);
@@ -89,10 +111,11 @@ exports.create = async (req, res) => {
 
 exports.list = async (_req, res) => {
   try {
+    await ensureMarketplaceSchema();
     const { rows } = await pool.query(
       `${baseServiceSelect} ORDER BY s.created_at DESC`
     );
-    res.json({ services: rows });
+    res.json({ services: rows.map(normalizeService) });
   } catch (e) {
     handlePgError(res, e, "Failed to list services");
   }
@@ -100,15 +123,32 @@ exports.list = async (_req, res) => {
 
 exports.update = async (req, res) => {
   try {
+    await ensureMarketplaceSchema();
     const { id } = req.params;
-    const { name, description, categoryId, category, price, active } = req.body;
+    const { title, name, description, categoryId, category, price, active } =
+      req.body;
+
+    let nextTitle;
+    if (title !== undefined || name !== undefined) {
+      const newTitleRaw = title !== undefined ? title : name;
+      const newTitle =
+        newTitleRaw === undefined || newTitleRaw === null
+          ? ""
+          : String(newTitleRaw).trim();
+
+      if (!newTitle) {
+        return res.status(400).json({ error: "name required" });
+      }
+
+      nextTitle = newTitle;
+    }
 
     const updates = [];
     const values = [];
 
-    if (name !== undefined) {
-      updates.push(`name = $${values.length + 1}`);
-      values.push(name);
+    if (nextTitle !== undefined) {
+      updates.push(`title = $${values.length + 1}`);
+      values.push(nextTitle);
     }
 
     if (description !== undefined) {
@@ -164,6 +204,7 @@ exports.update = async (req, res) => {
 
 exports.remove = async (req, res) => {
   try {
+    await ensureMarketplaceSchema();
     const q = await pool.query(
       `DELETE FROM services WHERE id=$1 AND provider_id=$2 RETURNING id`,
       [req.params.id, req.user.id]

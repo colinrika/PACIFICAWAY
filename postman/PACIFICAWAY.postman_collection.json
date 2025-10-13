@@ -2,6 +2,7 @@
   "info": {
     "name": "PACIFICAWAY API",
     "_postman_id": "d75f6fbe-4b1d-4cfa-96f8-bb5e1e7087c0",
+    "description": "Collection exercising the public endpoints plus the full authentication, admin, catalog, and booking workflows exposed by the PACIFICAWAY API server.",
     "description": "Collection covering the public endpoints, authentication, and CRUD flows exposed by the PACIFICAWAY API server.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
@@ -11,6 +12,19 @@
       "item": [
         {
           "name": "Root",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Root is reachable\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "GET",
             "header": [],
@@ -19,6 +33,7 @@
               "host": [
                 "{{baseUrl}}"
               ],
+              "path": []
               "path": [
                 ""
               ]
@@ -28,6 +43,19 @@
         },
         {
           "name": "Health",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Health endpoint is healthy\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "GET",
             "header": [],
@@ -49,6 +77,44 @@
       "name": "Auth",
       "item": [
         {
+          "name": "Register Provider",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const now = Date.now();",
+                  "if (!pm.collectionVariables.get(\"providerEmail\")) {",
+                  "  pm.collectionVariables.set(\"providerEmail\", \"provider.\" + now + \"@example.com\");",
+                  "}",
+                  "if (!pm.collectionVariables.get(\"providerPassword\")) {",
+                  "  pm.collectionVariables.set(\"providerPassword\", \"P@ssw0rd!\");",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Provider registered\", function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "pm.expect(json).to.have.property(\"token\");",
+                  "pm.collectionVariables.set(\"authToken\", json.token);",
+                  "if (json.user && json.user.id) {",
+                  "  pm.collectionVariables.set(\"userId\", json.user.id);",
+                  "}",
+                  "if (json.user && json.user.email) {",
+                  "  pm.collectionVariables.set(\"providerEmail\", json.user.email);",
+                  "}"
+                ]
+              }
+            }
+          ],
           "name": "Register",
           "request": {
             "method": "POST",
@@ -60,6 +126,7 @@
             ],
             "body": {
               "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Ada\",\n  \"lastName\": \"Lovelace\",\n  \"email\": \"{{providerEmail}}\",\n  \"password\": \"{{providerPassword}}\",\n  \"role\": \"provider\",\n  \"phoneNumber\": \"+1-555-0000\"\n}"
               "raw": "{\n  \"firstName\": \"Ada\",\n  \"lastName\": \"Lovelace\",\n  \"email\": \"ada@example.com\",\n  \"password\": \"P@ssw0rd!\",\n  \"role\": \"provider\",\n  \"phoneNumber\": \"+1-555-0000\",\n  \"countryId\": \"{{countryId}}\"\n}"
             },
             "url": {
@@ -76,6 +143,37 @@
           "response": []
         },
         {
+          "name": "Login Provider",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get(\"providerEmail\")) {",
+                  "  throw new Error(\"Run Register Provider to seed providerEmail first\");",
+                  "}",
+                  "if (!pm.collectionVariables.get(\"providerPassword\")) {",
+                  "  throw new Error(\"providerPassword missing. Register Provider first.\");",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Provider logged in\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "pm.expect(json).to.have.property(\"token\");",
+                  "pm.collectionVariables.set(\"authToken\", json.token);"
+                ]
+              }
+            }
+          ],
           "name": "Login",
           "request": {
             "method": "POST",
@@ -87,6 +185,7 @@
             ],
             "body": {
               "mode": "raw",
+              "raw": "{\n  \"email\": \"{{providerEmail}}\",\n  \"password\": \"{{providerPassword}}\"\n}"
               "raw": "{\n  \"email\": \"ada@example.com\",\n  \"password\": \"P@ssw0rd!\"\n}"
             },
             "url": {
@@ -103,11 +202,116 @@
           "response": []
         },
         {
+          "name": "Register Admin",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const now = Date.now();",
+                  "if (!pm.collectionVariables.get(\"adminEmail\")) {",
+                  "  pm.collectionVariables.set(\"adminEmail\", \"admin.\" + now + \"@example.com\");",
+                  "}",
+                  "if (!pm.collectionVariables.get(\"adminPassword\")) {",
+                  "  pm.collectionVariables.set(\"adminPassword\", \"Adm1nP@ss!\");",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Admin registered\", function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "pm.expect(json).to.have.property(\"token\");",
+                  "pm.collectionVariables.set(\"adminToken\", json.token);",
+                  "if (json.user && json.user.id) {",
+                  "  pm.collectionVariables.set(\"adminUserId\", json.user.id);",
+                  "}",
+                  "if (json.user && json.user.email) {",
+                  "  pm.collectionVariables.set(\"adminEmail\", json.user.email);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Grace\",\n  \"lastName\": \"Hopper\",\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\",\n  \"role\": \"admin\",\n  \"phoneNumber\": \"+1-555-1000\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Login Admin",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get(\"adminEmail\")) {",
+                  "  throw new Error(\"Run Register Admin to seed adminEmail first\");",
+                  "}",
+                  "if (!pm.collectionVariables.get(\"adminPassword\")) {",
+                  "  throw new Error(\"adminPassword missing. Register Admin first.\");",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Admin logged in\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "pm.expect(json).to.have.property(\"token\");",
+                  "pm.collectionVariables.set(\"adminToken\", json.token);"
+                ]
+              }
+            }
+          ],
           "name": "Logout",
           "request": {
             "method": "POST",
             "header": [
               {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
                 "key": "Authorization",
                 "value": "Bearer {{authToken}}"
               }
@@ -119,6 +323,7 @@
               ],
               "path": [
                 "auth",
+                "login"
                 "logout"
               ]
             }
@@ -132,6 +337,24 @@
       "item": [
         {
           "name": "Me",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Fetched current user\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "pm.expect(json).to.have.property(\"user\");",
+                  "if (json.user && json.user.id) {",
+                  "  pm.collectionVariables.set(\"userId\", json.user.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "GET",
             "header": [
@@ -155,6 +378,25 @@
         },
         {
           "name": "List Users (admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Admin listed users\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "pm.expect(json).to.have.property(\"users\");",
+                  "pm.expect(json.users).to.be.an(\"array\");",
+                  "if (json.users && json.users[0] && json.users[0].id) {",
+                  "  pm.collectionVariables.set(\"userId\", json.users[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "GET",
             "header": [
@@ -177,6 +419,31 @@
         },
         {
           "name": "Get User By Id (admin)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get(\"userId\")) {",
+                  "  throw new Error(\"userId missing. Fetch a user before requesting by id.\");",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Admin fetched user\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.expect(pm.response.json()).to.have.property(\"user\");"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "GET",
             "header": [
@@ -201,6 +468,227 @@
       ]
     },
     {
+      "name": "Countries",
+      "item": [
+        {
+          "name": "List Countries",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Countries listed\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.expect(pm.response.json()).to.have.property(\"countries\");"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/countries",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "countries"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Country (admin)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get(\"adminToken\")) {",
+                  "  throw new Error(\"adminToken missing. Log in as an admin first.\");",
+                  "}",
+                  "const now = Date.now();",
+                  "const letters = \"ABCDEFGHIJKLMNOPQRSTUVWXYZ\";",
+                  "const first = letters[now % letters.length];",
+                  "const second = letters[Math.floor(now / letters.length) % letters.length];",
+                  "pm.collectionVariables.set(\"countryName\", \"Exampleland \" + now);",
+                  "pm.collectionVariables.set(\"countryIsoCode\", first + second);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Country created\", function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "pm.expect(json).to.have.property(\"country\");",
+                  "if (json.country && json.country.id) {",
+                  "  pm.collectionVariables.set(\"countryId\", json.country.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{countryName}}\",\n  \"isoCode\": \"{{countryIsoCode}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/countries",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "countries"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "States",
+      "item": [
+        {
+          "name": "List States",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"States listed\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.expect(pm.response.json()).to.have.property(\"states\");"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/states",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "states"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create State (admin)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get(\"adminToken\")) {",
+                  "  throw new Error(\"adminToken missing. Log in as an admin first.\");",
+                  "}",
+                  "if (!pm.collectionVariables.get(\"countryId\")) {",
+                  "  throw new Error(\"countryId missing. Create a country first.\");",
+                  "}",
+                  "const now = Date.now();",
+                  "pm.collectionVariables.set(\"stateName\", \"Example State \" + now);",
+                  "const suffix = now.toString().slice(-3);",
+                  "pm.collectionVariables.set(\"stateCode\", \"EX\" + suffix);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"State created\", function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "pm.expect(json).to.have.property(\"state\");",
+                  "if (json.state && json.state.id) {",
+                  "  pm.collectionVariables.set(\"stateId\", json.state.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{stateName}}\",\n  \"code\": \"{{stateCode}}\",\n  \"countryId\": \"{{countryId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/states",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "states"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Cities",
+      "item": [
+        {
+          "name": "List Cities",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Cities listed\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.expect(pm.response.json()).to.have.property(\"cities\");"
+                ]
+              }
+            }
+          ],
       "name": "Services",
       "item": [
         {
@@ -209,11 +697,13 @@
             "method": "GET",
             "header": [],
             "url": {
+              "raw": "{{baseUrl}}/cities",
               "raw": "{{baseUrl}}/services",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "cities"
                 "services"
               ]
             }
@@ -221,6 +711,43 @@
           "response": []
         },
         {
+          "name": "Create City (admin)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get(\"adminToken\")) {",
+                  "  throw new Error(\"adminToken missing. Log in as an admin first.\");",
+                  "}",
+                  "if (!pm.collectionVariables.get(\"countryId\")) {",
+                  "  throw new Error(\"countryId missing. Create a country first.\");",
+                  "}",
+                  "if (!pm.collectionVariables.get(\"stateId\")) {",
+                  "  throw new Error(\"stateId missing. Create a state first.\");",
+                  "}",
+                  "pm.collectionVariables.set(\"cityName\", \"Example City \" + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"City created\", function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "pm.expect(json).to.have.property(\"city\");",
+                  "if (json.city && json.city.id) {",
+                  "  pm.collectionVariables.set(\"cityId\", json.city.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
           "name": "Create Service",
           "request": {
             "method": "POST",
@@ -231,11 +758,51 @@
               },
               {
                 "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
                 "value": "Bearer {{authToken}}"
               }
             ],
             "body": {
               "mode": "raw",
+              "raw": "{\n  \"name\": \"{{cityName}}\",\n  \"stateId\": \"{{stateId}}\",\n  \"countryId\": \"{{countryId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/cities",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cities"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Services",
+      "item": [
+        {
+          "name": "List Services",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Services listed\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.expect(pm.response.json()).to.have.property(\"services\");"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
               "raw": "{\n  \"name\": \"Premium Cleaning\",\n  \"description\": \"Full home cleaning package\",\n  \"price\": 150.0,\n  \"category\": \"Cleaning\"\n}"
             },
             "url": {
@@ -251,6 +818,39 @@
           "response": []
         },
         {
+          "name": "Create Service",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get(\"authToken\")) {",
+                  "  throw new Error(\"authToken missing. Log in as the provider first.\");",
+                  "}",
+                  "pm.collectionVariables.set(\"serviceName\", \"Premium Cleaning \" + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Service created\", function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "pm.expect(json).to.have.property(\"service\");",
+                  "if (json.service && json.service.id) {",
+                  "  pm.collectionVariables.set(\"serviceId\", json.service.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
           "name": "Update Service",
           "request": {
             "method": "PATCH",
@@ -266,6 +866,10 @@
             ],
             "body": {
               "mode": "raw",
+              "raw": "{\n  \"name\": \"{{serviceName}}\",\n  \"description\": \"Full home cleaning package\",\n  \"price\": 150,\n  \"category\": \"Cleaning\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/services",
               "raw": "{\n  \"description\": \"Updated description\",\n  \"price\": 175.0,\n  \"active\": true\n}"
             },
             "url": {
@@ -274,6 +878,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
+                "services"
                 "services",
                 "{{serviceId}}"
               ]
@@ -282,6 +887,43 @@
           "response": []
         },
         {
+          "name": "Update Service",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get(\"authToken\")) {",
+                  "  throw new Error(\"authToken missing. Log in as the provider first.\");",
+                  "}",
+                  "if (!pm.collectionVariables.get(\"serviceId\")) {",
+                  "  throw new Error(\"serviceId missing. Create a service first.\");",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Service updated\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.expect(pm.response.json()).to.have.property(\"service\");"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
           "name": "Delete Service",
           "request": {
             "method": "DELETE",
@@ -291,6 +933,10 @@
                 "value": "Bearer {{authToken}}"
               }
             ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Updated description\",\n  \"price\": 175,\n  \"active\": true\n}"
+            },
             "url": {
               "raw": "{{baseUrl}}/services/{{serviceId}}",
               "host": [
@@ -311,6 +957,20 @@
       "item": [
         {
           "name": "List Items",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Items listed\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.expect(pm.response.json()).to.have.property(\"items\");"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "GET",
             "header": [],
@@ -328,6 +988,36 @@
         },
         {
           "name": "Create Item",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get(\"authToken\")) {",
+                  "  throw new Error(\"authToken missing. Log in as the provider first.\");",
+                  "}",
+                  "pm.collectionVariables.set(\"itemName\", \"Eco Detergent \" + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Item created\", function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "pm.expect(json).to.have.property(\"item\");",
+                  "if (json.item && json.item.id) {",
+                  "  pm.collectionVariables.set(\"itemId\", json.item.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [
@@ -342,6 +1032,7 @@
             ],
             "body": {
               "mode": "raw",
+              "raw": "{\n  \"name\": \"{{itemName}}\",\n  \"description\": \"Plant-based cleaning solution\",\n  \"price\": 25.5,\n  \"stock\": 10\n}"
               "raw": "{\n  \"name\": \"Eco Detergent\",\n  \"description\": \"Plant-based cleaning solution\",\n  \"price\": 25.5,\n  \"stock\": 10\n}"
             },
             "url": {
@@ -358,6 +1049,34 @@
         },
         {
           "name": "Update Item",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get(\"authToken\")) {",
+                  "  throw new Error(\"authToken missing. Log in as the provider first.\");",
+                  "}",
+                  "if (!pm.collectionVariables.get(\"itemId\")) {",
+                  "  throw new Error(\"itemId missing. Create an item first.\");",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Item updated\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.expect(pm.response.json()).to.have.property(\"item\");"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "PATCH",
             "header": [
@@ -389,6 +1108,38 @@
         },
         {
           "name": "Delete Item",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get(\"authToken\")) {",
+                  "  throw new Error(\"authToken missing. Log in as the provider first.\");",
+                  "}",
+                  "if (!pm.collectionVariables.get(\"itemId\")) {",
+                  "  throw new Error(\"itemId missing. Create an item first.\");",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Item deleted\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "if (json.deleted) {",
+                  "  pm.expect(json.deleted).to.eql(pm.collectionVariables.get(\"itemId\"));",
+                  "}",
+                  "pm.collectionVariables.unset(\"itemId\");"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "DELETE",
             "header": [
@@ -417,6 +1168,38 @@
       "item": [
         {
           "name": "Create Booking",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get(\"authToken\")) {",
+                  "  throw new Error(\"authToken missing. Log in as the provider first.\");",
+                  "}",
+                  "if (!pm.collectionVariables.get(\"serviceId\")) {",
+                  "  throw new Error(\"serviceId missing. Create a service first.\");",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Booking created\", function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "pm.expect(json).to.have.property(\"booking\");",
+                  "if (json.booking && json.booking.id) {",
+                  "  pm.collectionVariables.set(\"bookingId\", json.booking.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [
@@ -447,6 +1230,31 @@
         },
         {
           "name": "List My Bookings",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get(\"authToken\")) {",
+                  "  throw new Error(\"authToken missing. Log in first.\");",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Bookings listed\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.expect(pm.response.json()).to.have.property(\"bookings\");"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "GET",
             "header": [
@@ -470,6 +1278,34 @@
         },
         {
           "name": "Update Booking Status",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get(\"authToken\")) {",
+                  "  throw new Error(\"authToken missing. Log in first.\");",
+                  "}",
+                  "if (!pm.collectionVariables.get(\"bookingId\")) {",
+                  "  throw new Error(\"bookingId missing. Create a booking first.\");",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Booking status updated\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.expect(pm.response.json()).to.have.property(\"booking\");"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "PATCH",
             "header": [
@@ -503,6 +1339,52 @@
       ]
     },
     {
+      "name": "Session Cleanup",
+      "item": [
+        {
+          "name": "Delete Service",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get(\"authToken\")) {",
+                  "  throw new Error(\"authToken missing. Log in first.\");",
+                  "}",
+                  "if (!pm.collectionVariables.get(\"serviceId\")) {",
+                  "  throw new Error(\"serviceId missing. Create a service first.\");",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Service deleted\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "if (json.deleted) {",
+                  "  pm.expect(json.deleted).to.eql(pm.collectionVariables.get(\"serviceId\"));",
+                  "}",
+                  "pm.collectionVariables.unset(\"serviceId\");"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/services/{{serviceId}}",
       "name": "Countries",
       "item": [
         {
@@ -546,6 +1428,8 @@
                 "{{baseUrl}}"
               ],
               "path": [
+                "services",
+                "{{serviceId}}"
                 "countries"
               ]
             }
@@ -575,6 +1459,32 @@
           "response": []
         },
         {
+          "name": "Logout",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get(\"authToken\")) {",
+                  "  throw new Error(\"authToken missing. Log in first.\");",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Logged out\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.collectionVariables.unset(\"authToken\");"
+                ]
+              }
+            }
+          ],
           "name": "Create State (admin)",
           "request": {
             "method": "POST",
@@ -632,6 +1542,12 @@
             "method": "POST",
             "header": [
               {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout",
                 "key": "Content-Type",
                 "value": "application/json"
               },
@@ -650,6 +1566,8 @@
                 "{{baseUrl}}"
               ],
               "path": [
+                "auth",
+                "logout"
                 "cities"
               ]
             }
@@ -673,6 +1591,19 @@
       "value": ""
     },
     {
+      "key": "providerEmail",
+      "value": ""
+    },
+    {
+      "key": "providerPassword",
+      "value": ""
+    },
+    {
+      "key": "adminEmail",
+      "value": ""
+    },
+    {
+      "key": "adminPassword",
       "key": "serviceId",
       "value": ""
     },
@@ -689,7 +1620,19 @@
       "value": ""
     },
     {
+      "key": "adminUserId",
+      "value": ""
+    },
+    {
       "key": "countryId",
+      "value": ""
+    },
+    {
+      "key": "countryName",
+      "value": ""
+    },
+    {
+      "key": "countryIsoCode",
       "value": ""
     },
     {
@@ -697,6 +1640,40 @@
       "value": ""
     },
     {
+      "key": "stateName",
+      "value": ""
+    },
+    {
+      "key": "stateCode",
+      "value": ""
+    },
+    {
+      "key": "cityId",
+      "value": ""
+    },
+    {
+      "key": "cityName",
+      "value": ""
+    },
+    {
+      "key": "serviceId",
+      "value": ""
+    },
+    {
+      "key": "serviceName",
+      "value": ""
+    },
+    {
+      "key": "itemId",
+      "value": ""
+    },
+    {
+      "key": "itemName",
+      "value": ""
+    },
+    {
+      "key": "bookingId",
+      "value": ""
       "key": "cityId",
       "value": ""
     }

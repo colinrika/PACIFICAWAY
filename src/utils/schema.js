@@ -2,14 +2,40 @@ const pool = require("../config/db");
 
 let ensureMarketplacePromise;
 
-const createServiceCategoriesTable = async () => {
+const ensureCategoriesTable = async () => {
   await pool.query(`
-    CREATE TABLE IF NOT EXISTS service_categories (
+    CREATE TABLE IF NOT EXISTS categories (
       id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
       name text NOT NULL UNIQUE,
+      description text,
       created_at timestamp NOT NULL DEFAULT now(),
       updated_at timestamp NOT NULL DEFAULT now()
     )
+  `);
+
+  await pool.query(`
+    DO $$
+    BEGIN
+      IF EXISTS (
+        SELECT 1
+        FROM information_schema.tables
+        WHERE table_schema = 'public'
+          AND table_name = 'service_categories'
+      ) THEN
+        EXECUTE $$
+          INSERT INTO categories (id, name, description, created_at, updated_at)
+          SELECT
+            id,
+            name,
+            NULL,
+            COALESCE(created_at, NOW()),
+            COALESCE(updated_at, NOW())
+          FROM service_categories
+          ON CONFLICT (id) DO NOTHING
+        $$;
+      END IF;
+    END
+    $$;
   `);
 };
 
@@ -70,6 +96,29 @@ const ensureServicesTable = async () => {
   await pool.query(
     "CREATE INDEX IF NOT EXISTS idx_services_category ON services(category_id)"
   );
+
+  await pool.query(`
+    DO $$
+    BEGIN
+      IF EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'services_category_id_fkey'
+          AND conrelid = 'services'::regclass
+      ) THEN
+        ALTER TABLE services DROP CONSTRAINT services_category_id_fkey;
+      END IF;
+    END
+    $$;
+  `);
+
+  await pool.query(`
+    ALTER TABLE services
+      ADD CONSTRAINT services_category_id_fkey
+      FOREIGN KEY (category_id)
+      REFERENCES categories(id)
+      ON DELETE SET NULL
+  `);
 };
 
 const ensureItemsTable = async () => {
@@ -153,7 +202,7 @@ async function ensurePgcryptoExtension() {
 
 async function runEnsureMarketplaceSchema() {
   await ensurePgcryptoExtension();
-  await createServiceCategoriesTable();
+  await ensureCategoriesTable();
   await ensureServicesTable();
   await ensureItemsTable();
   await ensureBookingsTable();

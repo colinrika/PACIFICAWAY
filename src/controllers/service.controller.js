@@ -5,7 +5,7 @@ const baseServiceSelect = `
   SELECT s.*, u.name AS provider_name, c.name AS category
   FROM services s
   JOIN users u ON u.id = s.provider_id
-  LEFT JOIN service_categories c ON c.id = s.category_id
+  LEFT JOIN categories c ON c.id = s.category_id
 `;
 
 const normalizeService = (service) => {
@@ -32,7 +32,7 @@ const resolveCategoryInput = async (categoryId, categoryName) => {
     }
 
     const { rows } = await pool.query(
-      "SELECT id FROM service_categories WHERE id = $1",
+      "SELECT id FROM categories WHERE id = $1",
       [categoryId]
     );
     if (!rows[0]) {
@@ -48,10 +48,11 @@ const resolveCategoryInput = async (categoryId, categoryName) => {
     if (!name) return { touched: true, value: null };
 
     const { rows } = await pool.query(
-      `INSERT INTO service_categories (name)
+      `INSERT INTO categories (name)
        VALUES ($1)
        ON CONFLICT (name)
-       DO UPDATE SET name = EXCLUDED.name
+       DO UPDATE SET name = EXCLUDED.name,
+         updated_at = NOW()
        RETURNING id`,
       [name]
     );

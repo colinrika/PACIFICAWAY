@@ -1,12 +1,34 @@
 create extension if not exists pgcrypto;
 
 -- Ensure lookup tables used by controllers exist with the expected shape
-create table if not exists service_categories (
+create table if not exists categories (
   id uuid primary key default gen_random_uuid(),
   name text not null unique,
+  description text,
   created_at timestamp not null default now(),
   updated_at timestamp not null default now()
 );
+
+do $$
+begin
+  if exists (
+    select 1
+    from information_schema.tables
+    where table_schema = 'public'
+      and table_name = 'service_categories'
+  ) then
+    insert into categories (id, name, description, created_at, updated_at)
+    select
+      id,
+      name,
+      null,
+      coalesce(created_at, now()),
+      coalesce(updated_at, now())
+    from service_categories
+    on conflict (id) do nothing;
+  end if;
+end
+$$;
 
 create table if not exists services (
   id uuid primary key default gen_random_uuid()
@@ -73,12 +95,23 @@ begin
       add constraint services_provider_id_fkey foreign key (provider_id)
       references users(id) on delete cascade;
   end if;
+  if exists (
+    select 1 from pg_constraint where conname = 'services_category_id_fkey'
+  ) then
+    alter table services
+      drop constraint services_category_id_fkey;
+  end if;
+end
+$$;
+
+do $$
+begin
   if not exists (
     select 1 from pg_constraint where conname = 'services_category_id_fkey'
   ) then
     alter table services
       add constraint services_category_id_fkey foreign key (category_id)
-      references service_categories(id);
+      references categories(id) on delete set null;
   end if;
 end
 $$;

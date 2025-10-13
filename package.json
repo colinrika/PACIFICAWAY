@@ -9,8 +9,7 @@
     "test": "jest",
     "seed:cities": "node scripts/seedCities.js",
     "seed:countries": "node scripts/seedCountries.js",
-    "seed:states": "node scripts/seedStates.js",
-    "check:codex": "node scripts/checkCodexSync.js"
+    "seed:states": "node scripts/seedStates.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",

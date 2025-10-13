@@ -39,3 +39,18 @@ Open the forwarded URL (ends with `-4000.app.github.dev`) and you should see **P
 ```
 curl https://<id>-4000.app.github.dev/health
 ```
+
+## 7) Check for upstream Codex updates
+To verify that your local branch has the latest commits from the Codex canonical repo, configure the remote once:
+
+```
+git remote add codex <repository-url>
+```
+
+Then run the helper script:
+
+```
+npm run check:codex
+```
+
+It will fetch the remote and report whether you are up to date, ahead, or behind compared to the Codex branch.

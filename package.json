@@ -6,13 +6,11 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
+    "test": "jest",
     "seed:cities": "node scripts/seedCities.js",
     "seed:countries": "node scripts/seedCountries.js",
     "seed:states": "node scripts/seedStates.js",
-    "seed:states": "node scripts/seedStates.js",
-    "seed:countries": "node scripts/seedCountries.js",
-    "seed:states": "node scripts/seedStates.js",
-    "seed:cities": "node scripts/seedCities.js"
+    "check:codex": "node scripts/checkCodexSync.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",
@@ -23,6 +21,11 @@
     "pg": "^8.16.3"
   },
   "devDependencies": {
-    "nodemon": "^3.1.10"
+    "jest": "^30.2.0",
+    "nodemon": "^3.1.10",
+    "supertest": "^7.1.1"
+  },
+  "jest": {
+    "testEnvironment": "node"
   }
 }
